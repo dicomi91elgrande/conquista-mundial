@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Conquista Mundial - panel</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #12101f; color: #eee; font: 14px/1.35 "Segoe UI", system-ui, Arial, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: #1c1836; position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 17px; margin: 0; flex: 1; }
+  #dot { width: 12px; height: 12px; border-radius: 50%; background: #c33; }
+  #dot.on { background: #3c6; }
+  main { display: grid; grid-template-columns: 560px 1fr; gap: 12px; padding: 12px; align-items: start; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  section { background: #1c1836; border: 1px solid #2f2a55; border-radius: 10px; padding: 10px 12px; margin-bottom: 12px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .6px; color: #ffd34d; margin: 0 0 8px; }
+  input, select { background: #0d0b1a; color: #fff; border: 1px solid #3a3470; border-radius: 6px; padding: 7px 8px; font: inherit; }
+  button { background: #3a3470; color: #fff; border: 0; border-radius: 6px; padding: 7px 10px; font: inherit; font-weight: 600; cursor: pointer; }
+  button:hover { filter: brightness(1.25); }
+  button.go { background: #e08a00; }
+  button.bad { background: #8a2a3a; }
+  button.big { width: 100%; padding: 16px; font-size: 20px; background: #d9a400; color: #201000; }
+  .rowf { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+  .rowf input { flex: 1; min-width: 90px; }
+  table { width: 100%; border-collapse: collapse; }
+  td, th { padding: 4px 6px; border-bottom: 1px solid #2a2550; text-align: left; }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; color: #ffd34d; font-weight: 700; }
+  tr.pick { cursor: pointer; } tr.pick:hover { background: #262050; }
+  .muted { color: #9a94c8; }
+  #prev { width: 540px; height: 200px; overflow: hidden; border-radius: 8px; border: 1px solid #2f2a55; }
+  #prev iframe { width: 1080px; height: 400px; border: 0; transform: scale(.5); transform-origin: 0 0; }
+  #log { max-height: 220px; overflow: auto; font-size: 13px; }
+  #log div { padding: 2px 0; border-bottom: 1px dashed #2a2550; }
+  #msg { position: fixed; right: 14px; bottom: 14px; background: #8a2a3a; padding: 10px 14px; border-radius: 8px; display: none; z-index: 9; }
+  #msg.ok { background: #2a7a4a; }
+  pre { white-space: pre-wrap; word-break: break-all; background: #0d0b1a; padding: 8px; border-radius: 6px; font-size: 12px; margin: 4px 0 8px; user-select: all; }
+  .right-item { border: 1px solid #e08a00; border-radius: 8px; padding: 8px; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <span id="dot"></span>
+  <h1>🌍 Conquista Mundial · <span id="rn">Ronda 1</span></h1>
+  <button onclick="act('undo')">↩ Deshacer última acción</button>
+  <a href="/" target="_blank" style="color:#9cf">Abrir overlay</a>
+</header>
+<main>
+  <div>
+    <section>
+      <h2>Vista previa del overlay</h2>
+      <div id="prev"><iframe src="/"></iframe></div>
+    </section>
+
+    <section>
+      <button class="big" onclick="act('end_round')">🏁 FIN DE RONDA <span id="winprev" style="font-size:14px;display:block;font-weight:600"></span></button>
+    </section>
+
+    <section>
+      <h2>Top de la ronda (clic en un nombre para seleccionarlo)</h2>
+      <table id="totals"></table>
+      <div class="rowf" style="margin-top:8px">
+        <input id="gname" list="users" placeholder="usuario">
+        <datalist id="users"></datalist>
+      </div>
+      <div class="rowf" id="chips"></div>
+      <div class="rowf">
+        <input id="gcoins" type="number" min="1" placeholder="monedas" style="max-width:120px">
+        <button onclick="gift(+gcoins.value)">Sumar</button>
+        <button class="bad" onclick="if(confirm('¿Poner la ronda a cero sin premiar a nadie?'))act('reset_round')">Vaciar ronda</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Simular chat</h2>
+      <div class="rowf">
+        <input id="cname" list="users" placeholder="usuario" style="max-width:160px">
+        <input id="ctext" placeholder="conquistotailandia" value="conquisto ">
+        <button onclick="act('comment',{name:cname.value,text:ctext.value})">Enviar</button>
+      </div>
+    </section>
+  </div>
+
+  <div>
+    <section>
+      <h2>Conquistas pendientes (ganadores que aún no han elegido país)</h2>
+      <div id="rights"></div>
+      <datalist id="clist"></datalist>
+    </section>
+
+    <section>
+      <h2>Batalla</h2>
+      <div id="battle"></div>
+    </section>
+
+    <section>
+      <h2>Países conquistados</h2>
+      <table id="countries"></table>
+      <div class="rowf" style="margin-top:8px">
+        <input id="oname" list="users" placeholder="usuario">
+        <input id="ocountry" list="clist" placeholder="país">
+        <input id="ovalue" type="number" min="1" placeholder="valor" style="max-width:90px">
+        <button onclick="act('set_owner',{name:oname.value,country:ocountry.value,value:+ovalue.value||1})">Asignar a mano</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Registro</h2>
+      <div id="log"></div>
+    </section>
+
+    <section>
+      <h2>Ajustes y copia de seguridad</h2>
+      <div class="rowf">
+        Duración de la batalla (s): <input id="bsec" type="number" min="15" max="600" style="max-width:90px;flex:none">
+        <button onclick="act('config',{battleSeconds:+bsec.value})">Guardar</button>
+      </div>
+      <div class="rowf">
+        <button onclick="exportState()">⬇ Exportar copia</button>
+        <button onclick="impf.click()">⬆ Importar copia</button>
+        <input id="impf" type="file" accept=".json" style="display:none" onchange="importState(this)">
+        <button class="bad" onclick="if(confirm('¿Borrar TODO: países, imperios y rondas?'))act('reset_all')">Borrar todo</button>
+      </div>
+      <div class="muted">El panel guarda además una copia automática en este navegador y la restaura sola si el servidor se reinicia vacío.</div>
+    </section>
+
+    <section>
+      <h2>WebHooks para Interactive (método POST)</h2>
+      <div class="muted">URL de ambos:</div>
+      <pre id="hookurl"></pre>
+      <div class="muted">Disparador «cualquier regalo» — POST Body:</div>
+      <pre>{"event":"gift","username":"{username}","nickname":"{nickname}","imgprofile":"{imgprofile}","coins":{coins}}</pre>
+      <div class="muted">Disparador «mensaje de chat» — POST Body:</div>
+      <pre>{"event":"comment","username":"{username}","nickname":"{nickname}","imgprofile":"{imgprofile}","comment":"{comment}"}</pre>
+    </section>
+  </div>
+</main>
+<div id="msg"></div>
+
+<script>
+const TOKEN = new URLSearchParams(location.search).get('token');
+const QS = TOKEN ? '?token=' + encodeURIComponent(TOKEN) : '';
+const $ = id => document.getElementById(id);
+let S = null, D = null, offset = 0, C = {}, restored = false;
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function fmt(n) { return Number(n || 0).toLocaleString('es-ES'); }
+function nm(uid) { return esc(((S.users[uid]) || {}).name || uid); }
+function cname(code) { return esc((C[code] || {}).name || code); }
+function say(text, ok) { const m = $('msg'); m.textContent = text; m.className = ok ? 'ok' : ''; m.style.display = 'block'; clearTimeout(say.t); say.t = setTimeout(() => m.style.display = 'none', 3500); }
+
+async function act(action, data) {
+  try {
+    const r = await fetch('/api' + QS, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ action }, data || {})) });
+    const j = await r.json();
+    if (!j.ok) say(j.error || 'Error');
+    return j.ok;
+  } catch (e) { say('Sin conexión con el servidor'); return false; }
+}
+function gift(coins) {
+  const name = $('gname').value.trim();
+  if (!name) return say('Escribe o selecciona un usuario');
+  if (!(coins > 0)) return say('Cantidad no válida');
+  act('gift', { name, coins });
+}
+$('chips').innerHTML = [1, 5, 10, 30, 99, 199, 500, 1000, 5000].map(n => '<button onclick="gift(' + n + ')">+' + n + '</button>').join('');
+$('hookurl').textContent = location.origin + '/webhook' + QS;
+
+function render() {
+  $('rn').textContent = 'Ronda ' + S.round.n;
+  const rank = Object.entries(S.round.totals).sort((a, b) => b[1] - a[1]);
+  $('winprev').textContent = rank.length ? 'Ganaría: ' + ((S.users[rank[0][0]] || {}).name || rank[0][0]) + ' (' + fmt(rank[0][1]) + ')' + (rank[1] ? ' · mención: ' + ((S.users[rank[1][0]] || {}).name || rank[1][0]) : '') : 'Nadie ha donado todavía en esta ronda';
+  $('totals').innerHTML = rank.length ? rank.map(([u, c], i) => '<tr class="pick" data-u="' + nm(u) + '"><td>' + (i + 1) + '</td><td>' + nm(u) + ' <span class="muted">@' + esc(u) + '</span></td><td class="n">' + fmt(c) + '</td></tr>').join('') : '<tr><td class="muted">Sin regalos en esta ronda</td></tr>';
+  $('users').innerHTML = Object.values(S.users).map(u => '<option value="' + esc(u.name) + '">').join('');
+
+  // conquistas pendientes: no pisar lo que se esté escribiendo
+  const sig = JSON.stringify(S.rights);
+  if (render.rsig !== sig) {
+    render.rsig = sig;
+    $('rights').innerHTML = S.rights.length ? S.rights.map(r => '<div class="right-item"><b>' + nm(r.uid) + '</b> <span class="muted">ganó la ronda ' + r.round + ' con ' + fmt(r.amount) + '</span><div class="rowf" style="margin:6px 0 0"><input list="clist" placeholder="país que ha pedido" id="rc' + r.id + '" onkeydown="if(event.key===\'Enter\')assign(' + r.id + ')"><button class="go" onclick="assign(' + r.id + ')">Conquistar</button><button class="bad" onclick="act(\'cancel_right\',{id:' + r.id + '})">Anular</button></div></div>').join('') : '<span class="muted">Nadie pendiente. El ganador escribe en el chat «conquisto + país» y se asigna solo.</span>';
+  }
+
+  const b = S.battle;
+  if (b) {
+    $('battle').innerHTML = '<div><b>' + cname(b.code) + '</b>: ' + nm(b.att) + ' <b style="color:#ffd34d">' + fmt(b.attScore) + '</b> (ataca) vs ' + nm(b.def) + ' <b style="color:#ffd34d">' + fmt(b.defScore) + '</b> (defiende) · <span id="bclk"></span></div><div class="rowf" style="margin-top:8px"><button onclick="act(\'battle_time\',{seconds:30})">+30 s</button><button class="go" onclick="act(\'battle_resolve\')">Resolver ya</button><button class="bad" onclick="act(\'battle_cancel\')">Cancelar batalla</button></div>' + (S.queue.length ? '<div class="muted">En cola: ' + S.queue.map(q => nm(q.uid) + ' → ' + cname(q.code)).join(', ') + '</div>' : '');
+  } else $('battle').innerHTML = '<span class="muted">No hay batalla. Empieza sola cuando alguien conquista un país que ya tiene dueño.</span>';
+
+  const cs = Object.entries(S.countries).sort((a, b) => b[1].value - a[1].value);
+  $('countries').innerHTML = cs.length ? '<tr><th>País</th><th>Dueño</th><th style="text-align:right">Valor</th><th></th></tr>' + cs.map(([code, c]) => '<tr><td>' + cname(code) + '</td><td>' + nm(c.owner) + '</td><td class="n">' + fmt(c.value) + '</td><td><button class="bad" onclick="if(confirm(\'¿Liberar ' + cname(code) + '?\'))act(\'free_country\',{code:\'' + code + '\'})">Liberar</button></td></tr>').join('') : '<tr><td class="muted">Mapa libre</td></tr>';
+
+  if (document.activeElement !== $('bsec')) $('bsec').value = S.config.battleSeconds;
+
+  $('log').innerHTML = S.events.slice().reverse().map(e => {
+    const t = new Date(e.t).toLocaleTimeString('es-ES');
+    let x = e.kind;
+    if (e.kind === 'round_end') x = 'Fin de ronda ' + e.n + (e.top.length ? ': gana ' + nm(e.top[0].uid) + ' (' + fmt(e.top[0].coins) + ')' : ': sin regalos');
+    else if (e.kind === 'conquest') x = '🚩 ' + nm(e.uid) + ' conquista ' + cname(e.code) + ' (valor ' + fmt(e.value) + ')';
+    else if (e.kind === 'reinforce') x = '🧱 ' + nm(e.uid) + ' refuerza ' + cname(e.code) + ' (valor ' + fmt(e.value) + ')';
+    else if (e.kind === 'battle_start') x = '⚔️ ' + nm(e.att) + ' ataca ' + cname(e.code) + ' de ' + nm(e.def);
+    else if (e.kind === 'battle_end') x = (e.flipped ? '🏴 ' + nm(e.winner) + ' arrebata ' : '🛡️ ' + nm(e.winner) + ' defiende ') + cname(e.code) + ' (' + fmt(e.score) + ' vs ' + fmt(e.other) + ')';
+    else if (e.kind === 'claim_fail') x = '⚠️ ' + nm(e.uid) + ' escribió «' + esc(e.text) + '»: ' + esc(e.reason) + ' → asígnalo a mano';
+    else if (e.kind === 'info') x = 'ℹ️ ' + esc(e.text);
+    return '<div><span class="muted">' + t + '</span> ' + x + '</div>';
+  }).join('');
+}
+function assign(id) { const v = $('rc' + id).value.trim(); if (!v) return say('Escribe el país'); act('assign', { id, country: v }); }
+$('totals').addEventListener('click', e => { const tr = e.target.closest('tr.pick'); if (tr) { $('gname').value = tr.dataset.u; $('cname').value = tr.dataset.u; } });
+setInterval(() => { const el = $('bclk'); if (el && S && S.battle) { const s = Math.max(0, Math.ceil((S.battle.endsAt - Date.now() - offset) / 1000)); el.textContent = s > 0 ? 'quedan ' + s + ' s' : 'resolviendo…'; } }, 250);
+
+/* copia de seguridad local */
+function hasData(st) { return st && (Object.keys(st.countries || {}).length || (st.rights || []).length || Object.keys((st.round || {}).totals || {}).length); }
+function onState(p) {
+  S = p.state; D = p.derived; offset = p.now - Date.now();
+  if (p.fresh && !restored) {
+    restored = true;
+    let bk = null; try { bk = JSON.parse(localStorage.getItem('cm_backup')); } catch (e) {}
+    if (hasData(bk)) { act('import', { state: bk }).then(ok => ok && say('Estado restaurado desde la copia de este navegador', true)); return; }
+  }
+  if (!p.fresh) { try { localStorage.setItem('cm_backup', JSON.stringify(S)); } catch (e) {} }
+  render();
+}
+function exportState() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(S, null, 1)], { type: 'application/json' }));
+  a.download = 'conquista-mundial-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+}
+function importState(inp) {
+  const f = inp.files[0]; if (!f) return;
+  f.text().then(t => { if (confirm('¿Sustituir el estado actual por el de la copia?')) act('import', { state: JSON.parse(t) }); inp.value = ''; }).catch(() => say('Archivo no válido'));
+}
+function connect() {
+  const es = new EventSource('/events');
+  es.onopen = () => $('dot').classList.add('on');
+  es.onmessage = m => { try { onState(JSON.parse(m.data)); } catch (e) { console.error(e); } };
+  es.onerror = () => { $('dot').classList.remove('on'); es.close(); setTimeout(connect, 2000); };
+}
+fetch('/countries.json').then(r => r.json()).then(j => {
+  for (const c of j.countries) C[c.code] = c;
+  $('clist').innerHTML = j.countries.map(c => '<option value="' + esc(c.name) + '">').join('');
+  connect();
+});
+</script>
+</body>
+</html>

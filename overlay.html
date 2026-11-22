@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Conquista Mundial - overlay</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #07061a; }
+  body.nobg { background: transparent; }
+  * { box-sizing: border-box; }
+  #stage {
+    position: absolute; left: 0; top: 0; width: 1080px; height: 400px; transform-origin: 0 0;
+    font-family: "Segoe UI", system-ui, -apple-system, Arial, sans-serif; color: #fff; font-weight: 800;
+    background: radial-gradient(120% 140% at 70% 0%, #241c5c 0%, #100c2e 55%, #07061a 100%);
+    overflow: hidden;
+  }
+  body.nobg #stage { background: transparent; }
+  .coin { display: inline-block; width: .78em; height: .78em; border-radius: 50%; vertical-align: -0.06em; margin-right: .22em;
+          background: radial-gradient(circle at 35% 30%, #fff3a6, #ffc21a 55%, #c98400); box-shadow: 0 0 0 2px #7a4b00 inset; }
+  .av { position: relative; display: inline-flex; align-items: center; justify-content: center; flex: none;
+        width: var(--s); height: var(--s); border-radius: 50%; overflow: hidden; color: #10102a;
+        font-size: calc(var(--s) * .5); border: 3px solid rgba(255,255,255,.85); }
+  .av img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .flag { border-radius: 4px; box-shadow: 0 0 0 2px rgba(255,255,255,.35); vertical-align: middle; }
+  .gold { color: #ffd34d; }
+
+  /* ---------- izquierda: top 3 de la ronda ---------- */
+  #left { position: absolute; left: 0; top: 0; width: 372px; height: 400px; padding: 12px 10px 10px 14px; }
+  #hdr { display: flex; align-items: center; justify-content: space-between; height: 44px; white-space: nowrap; }
+  #hdr b { font-size: 27px; letter-spacing: .3px; color: #ffd34d; text-shadow: 0 2px 0 #5b3a00; }
+  #hdr small { font-size: 20px; color: #cfc8ff; font-weight: 800; background: rgba(255,255,255,.12); padding: 3px 10px; border-radius: 9px; }
+  .row { display: flex; align-items: center; gap: 12px; height: 76px; margin-top: 8px; padding: 0 12px 0 10px;
+         border-radius: 16px; background: rgba(255,255,255,.07); border: 2px solid rgba(255,255,255,.10); }
+  .row.r1 { height: 104px; background: linear-gradient(90deg, rgba(255,196,40,.30), rgba(255,196,40,.08));
+            border-color: #ffc928; box-shadow: 0 0 22px rgba(255,190,30,.35); }
+  .row .who { position: relative; flex: none; display: flex; }
+  .row .rk { position: absolute; left: -8px; top: -10px; font-size: 28px; z-index: 2; filter: drop-shadow(0 2px 2px #000); }
+  .row.r1 .rk { font-size: 36px; left: -10px; top: -12px; }
+  .row .col { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 1px; }
+  .row .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 25px; line-height: 1.15; }
+  .row.r1 .nm { font-size: 31px; }
+  .row .l2 { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; overflow: hidden; }
+  .row .cn { font-size: 25px; line-height: 1.1; color: #ffd34d; flex: none; }
+  .row .tag { font-size: 15px; color: #fff; opacity: .85; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; }
+  .row.r1 .tag { font-size: 16px; color: #ffd34d; opacity: 1; line-height: 1.1; }
+  .row.r1 .nm { line-height: 1.1; }
+  .row.r1 .cn { font-size: 33px; line-height: 1; }
+  .row .noav { width: 54px; height: 54px; border-radius: 50%; border: 3px dashed rgba(255,255,255,.4); }
+  .row.r1 .noav { width: 74px; height: 74px; }
+  .row.empty { opacity: .5; }
+  .row.empty .nm, .row.r1.empty .nm { font-size: 23px; }
+  .row.bump { animation: bump .45s; }
+  @keyframes bump { 30% { transform: scale(1.05); filter: brightness(1.5); } }
+  #featured { margin-top: 8px; height: 40px; line-height: 40px; padding: 0 12px; border-radius: 12px; font-size: 21px;
+              background: rgba(140,120,255,.22); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #featured:empty { display: none; }
+
+  /* ---------- derecha: mapa + barra ---------- */
+  #right { position: absolute; left: 372px; top: 0; width: 708px; height: 400px; }
+  #map { position: absolute; left: 0; top: 4px; width: 708px; height: 318px; }
+  #map path { fill: #2b2560; stroke: #5a52a8; stroke-width: .5; transition: fill .6s; }
+  #map path.own { stroke: rgba(255,255,255,.9); stroke-width: .8; }
+  #map path.hot, #map circle.hot { animation: hot 1s infinite; }
+  @keyframes hot { 50% { filter: brightness(2.2); } }
+  #map circle { stroke: #fff; stroke-width: 1.5; }
+  #mapfail { position: absolute; left: 0; top: 4px; width: 708px; height: 318px; display: none; padding: 14px;
+             flex-wrap: wrap; align-content: flex-start; gap: 8px; }
+  #mapfail .chip { font-size: 22px; padding: 6px 12px; border-radius: 10px; background: rgba(255,255,255,.1); }
+  #pending { position: absolute; left: 10px; right: 10px; bottom: 8px; height: 64px; z-index: 2; display: none; align-items: center; gap: 10px;
+             padding: 0 14px; border-radius: 14px; font-size: 26px; white-space: nowrap; overflow: hidden;
+             background: linear-gradient(90deg, #ffb300, #ff7a00); color: #201000; box-shadow: 0 0 26px rgba(255,160,0,.7);
+             animation: pulse 1.2s infinite; }
+  #pending code { font: inherit; background: #201000; color: #ffd34d; padding: 2px 10px; border-radius: 8px; }
+  @keyframes pulse { 50% { transform: scale(1.015); filter: brightness(1.15); } }
+  #bar { position: absolute; left: 10px; right: 10px; bottom: 8px; height: 64px; display: flex; align-items: center; gap: 12px;
+         padding: 0 14px; border-radius: 16px; background: rgba(0,0,0,.42); border: 2px solid rgba(255,255,255,.12);
+         font-size: 25px; white-space: nowrap; overflow: hidden; }
+  #bar .ttl { color: #ffd34d; font-size: 23px; flex: none; }
+  #bar .it { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+  #bar .it .n { overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+  #bar .dot { width: 18px; height: 18px; border-radius: 5px; flex: none; border: 2px solid #fff; }
+  #bar .num { color: #ffd34d; }
+  #bar .cta code { font: inherit; color: #ffd34d; }
+  .fade { animation: fade .5s; }
+  @keyframes fade { from { transform: translateY(14px); } }
+
+  /* ---------- batalla ---------- */
+  #battle { position: absolute; inset: 0; display: none; flex-direction: column; padding: 12px 18px 10px;
+            background: radial-gradient(100% 120% at 50% 0%, rgba(120,20,30,.96), rgba(20,6,30,.97)); }
+  #battle .bt { height: 62px; display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 38px;
+                text-shadow: 0 3px 0 #000; }
+  #battle .mid { flex: 1; display: flex; align-items: center; justify-content: space-between; }
+  #battle .side { width: 250px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  #battle .side .role { font-size: 19px; letter-spacing: 2px; color: #ffd7d7; }
+  #battle .side .nm { font-size: 27px; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #battle .side .sc { font-size: 50px; line-height: 1; color: #ffd34d; text-shadow: 0 3px 0 #5b3a00; }
+  #battle .side.lead .av { box-shadow: 0 0 0 5px #ffd34d, 0 0 28px #ffd34d; }
+  #battle .clock { text-align: center; }
+  #battle .clock .t { font-size: 76px; line-height: 1; font-variant-numeric: tabular-nums; text-shadow: 0 4px 0 #000; }
+  #battle .clock .t.low { color: #ff5757; animation: pulse .5s infinite; }
+  #battle .clock small { display: block; font-size: 18px; color: #ffd7d7; font-weight: 700; }
+  #battle .tug { height: 30px; border-radius: 15px; overflow: hidden; display: flex; border: 3px solid #fff; background: #333; }
+  #battle .tug i { display: block; height: 100%; transition: width .5s; }
+  #battle .foot { text-align: center; font-size: 20px; color: #ffe9a8; margin-top: 6px; }
+
+  /* ---------- avisos ---------- */
+  #toast { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+           text-align: center; padding: 20px; background: radial-gradient(90% 100% at 50% 50%, rgba(30,20,90,.97), rgba(8,6,28,.97)); }
+  #toast.show { display: flex; animation: pop .45s; }
+  @keyframes pop { from { transform: scale(.8); } }
+  #toast .big { font-size: 46px; line-height: 1.1; text-shadow: 0 4px 0 #000; max-width: 660px; }
+  #toast .big b { color: #ffd34d; }
+  #toast .sub { font-size: 26px; color: #d9d3ff; font-weight: 700; }
+  #toast .sub code { font: inherit; color: #ffd34d; background: rgba(0,0,0,.45); padding: 2px 10px; border-radius: 8px; }
+  #toast .who { display: flex; align-items: center; gap: 16px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="left">
+    <div id="hdr"><b>TOP DONADORES</b><small id="rtitle">RONDA 1</small></div>
+    <div id="top3"></div>
+    <div id="featured"></div>
+  </div>
+  <div id="right">
+    <svg id="map" viewBox="0 0 708 318"><g id="lands"></g><g id="marks"></g></svg>
+    <div id="mapfail"></div>
+    <div id="pending"></div>
+    <div id="bar"></div>
+    <div id="battle"></div>
+    <div id="toast"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+const Q = new URLSearchParams(location.search);
+if (Q.get('bg') === '0') document.body.classList.add('nobg');
+const PAL = ['#ff5d5d','#ffb648','#7be36a','#35d6c4','#4aa8ff','#b08cff','#ff7ab8','#ffe45c','#ff8a3d','#5ce1ff','#b8e04a','#e96bff'];
+const $ = id => document.getElementById(id);
+const stage = $('stage');
+function fit() { stage.style.transform = 'scale(' + (innerWidth / 1080) + ')'; }
+addEventListener('resize', fit); fit();
+
+let S = null, D = null, offset = 0, lastEv = null;
+let C = {}, CONTS = {}, byNum = {}, featByCode = {}, pathGen = null, mapOk = false, hot = null;
+const cache = {};
+function setHTML(el, html) { if (cache[el.id] !== html) { cache[el.id] = html; el.innerHTML = html; return true; } return false; }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function fmt(n) { return Number(n || 0).toLocaleString('es-ES'); }
+function hash(s) { let h = 0; for (const ch of String(s)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h; }
+function user(uid) { return (S && S.users[uid]) || { name: uid }; }
+function nm(uid) { return esc(user(uid).name); }
+function color(uid) { const u = user(uid); return PAL[(u.c != null ? u.c : hash(uid)) % PAL.length]; }
+function av(uid, size) {
+  const u = user(uid), ok = u.img && /^https?:/.test(u.img);
+  return '<span class="av" style="--s:' + size + 'px;background:' + color(uid) + '">' + esc((u.name || '?').trim().charAt(0).toUpperCase()) +
+    (ok ? '<img src="/avatar?u=' + encodeURIComponent(u.img) + '" onerror="this.remove()">' : '') + '</span>';
+}
+function flag(code, w) { return '<img class="flag" style="width:' + w + 'px" src="https://flagcdn.com/w160/' + code.toLowerCase() + '.png" onerror="this.style.display=\'none\'">'; }
+function cname(code) { return esc((C[code] || {}).name || code); }
+
+/* ---------------- mapa ---------------- */
+async function loadMap() {
+  try {
+    const world = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json').then(r => r.json());
+    const feats = topojson.feature(world, world.objects.countries).features.filter(f => f.id !== '010');
+    const proj = d3.geoNaturalEarth1().fitExtent([[6, 4], [702, 314]], { type: 'FeatureCollection', features: feats });
+    pathGen = d3.geoPath(proj);
+    let html = '';
+    for (const f of feats) {
+      const code = f.id ? byNum[f.id] : (f.properties.name === 'Kosovo' ? 'XK' : null);
+      if (code) {   // varios trozos pueden compartir código (p. ej. islas): nos quedamos con el mayor
+        const b = pathGen.bounds(f), area = (b[1][0] - b[0][0]) * (b[1][1] - b[0][1]);
+        if (!featByCode[code] || area > featByCode[code]._a) { f._a = area; featByCode[code] = f; }
+      }
+      html += '<path d="' + pathGen(f) + '"' + (code ? ' data-c="' + code + '"' : '') + '/>';
+    }
+    $('lands').innerHTML = html;
+    mapOk = true;
+  } catch (e) {
+    console.warn('mapa no disponible', e);
+    $('map').style.display = 'none'; $('mapfail').style.display = 'flex';
+  }
+  if (S) render();
+}
+function paintMap() {
+  const owned = S.countries;
+  if (!mapOk) {
+    setHTML($('mapfail'), Object.keys(owned).map(code =>
+      '<span class="chip" style="border:2px solid ' + color(owned[code].owner) + '">' + flag(code, 34) + ' ' + cname(code) + ' · ' + nm(owned[code].owner) + '</span>').join(''));
+    return;
+  }
+  let marks = '';
+  for (const p of $('lands').children) {
+    const code = p.dataset.c, c = code && owned[code];
+    p.style.fill = c ? color(c.owner) : '';
+    p.classList.toggle('own', !!c);
+    p.classList.toggle('hot', !!c && code === hot);
+  }
+  for (const code in owned) {
+    const f = featByCode[code]; if (!f) continue;
+    const b = pathGen.bounds(f), w = b[1][0] - b[0][0], h = b[1][1] - b[0][1];
+    if (w * h < 90 || code === hot) {       // país muy pequeño (o recién conquistado): marcador visible
+      const ct = pathGen.centroid(f);
+      marks += '<circle class="' + (code === hot ? 'hot' : '') + '" cx="' + ct[0].toFixed(1) + '" cy="' + ct[1].toFixed(1) + '" r="' + (code === hot ? 8 : 5) + '" fill="' + color(owned[code].owner) + '"/>';
+    }
+  }
+  setHTML($('marks'), marks);
+}
+
+/* ---------------- render ---------------- */
+let prevTotals = {};
+function renderTop() {
+  $('rtitle').textContent = 'RONDA ' + S.round.n;
+  const rank = Object.entries(S.round.totals).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const medals = ['🥇', '🥈', '🥉'], tags = ['👑 conquista un país', 'mención', ''];
+  let html = '';
+  for (let i = 0; i < 3; i++) {
+    const r = rank[i], tag = tags[i] ? '<span class="tag">' + tags[i] + '</span>' : '';
+    if (r) html += '<div class="row r' + (i + 1) + '" data-u="' + esc(r[0]) + '"><span class="who"><span class="rk">' + medals[i] + '</span>' + av(r[0], i ? 54 : 74) + '</span>' +
+      '<span class="col">' + (i ? '' : tag) + '<span class="nm">' + nm(r[0]) + '</span><span class="l2"><span class="cn"><i class="coin"></i>' + fmt(r[1]) + '</span>' + (i ? tag : '') + '</span></span></div>';
+    else html += '<div class="row r' + (i + 1) + ' empty"><span class="who"><span class="rk">' + medals[i] + '</span><span class="noav"></span></span>' +
+      '<span class="col"><span class="nm">' + (i === 0 ? '¡Envía un regalo!' : 'Puesto libre') + '</span><span class="l2">' + tag + '</span></span></div>';
+  }
+  if (setHTML($('top3'), html)) {
+    for (const el of $('top3').querySelectorAll('.row[data-u]')) {
+      const u = el.dataset.u;
+      if (prevTotals[u] !== undefined && S.round.totals[u] > prevTotals[u] || (prevTotals[u] === undefined && Object.keys(prevTotals).length)) el.classList.add('bump');
+    }
+  }
+  prevTotals = Object.assign({}, S.round.totals);
+  setHTML($('featured'), S.featured ? '⭐ Mención de honor: <span class="gold">' + nm(S.featured.uid) + '</span>' : '');
+}
+function renderPending() {
+  const r = S.rights[0], el = $('pending');
+  if (r && !S.battle) {
+    setHTML(el, '👑 ' + av(r.uid, 40) + '<b>' + nm(r.uid) + '</b> escribe en el chat <code>conquisto + país</code>');
+    el.style.display = 'flex'; $('bar').style.visibility = 'hidden';
+  } else { el.style.display = 'none'; $('bar').style.visibility = ''; }
+}
+let barView = 0;
+function renderBar() {
+  const views = [];
+  const emp = D.empires.slice(0, 3);
+  if (emp.length) views.push('<span class="ttl">🏰 IMPERIOS</span>' + emp.map((e, i) =>
+    '<span class="it"><i class="dot" style="background:' + color(e.uid) + '"></i><span class="n">' + nm(e.uid) + '</span><span class="num">' + e.count + '</span></span>').join(''));
+  const em = Object.keys(D.emperors);
+  if (em.length) views.push('<span class="ttl">👑 EMPERADORES</span>' + em.slice(0, 3).map(k =>
+    '<span class="it"><i class="dot" style="background:' + color(D.emperors[k].uid) + '"></i><span class="n">' + nm(D.emperors[k].uid) + '</span><span class="num">' + esc(CONTS[k] || k) + '</span></span>').join(''));
+  const last = Object.entries(S.countries).sort((a, b) => b[1].t - a[1].t).slice(0, 3);
+  if (last.length) views.push('<span class="ttl">🚩 ÚLTIMAS</span>' + last.map(([code, c]) =>
+    '<span class="it">' + flag(code, 34) + '<span class="n">' + nm(c.owner) + '</span></span>').join(''));
+  views.push('<span class="cta">🌍 Sé el <span class="gold">TOP 1</span> de la ronda y conquista un país. ¡Defiéndelo!</span>');
+  const html = '<span class="fade" style="display:flex;align-items:center;gap:14px;min-width:0">' + views[barView % views.length] + '</span>';
+  setHTML($('bar'), html);
+}
+setInterval(() => { barView++; if (S) renderBar(); }, 7000);
+
+function renderBattle() {
+  const b = S.battle, el = $('battle');
+  if (!b) { el.style.display = 'none'; cache.battle = null; return; }
+  el.style.display = 'flex';
+  const tot = Math.max(1, b.attScore + b.defScore), pa = Math.round(b.attScore / tot * 100);
+  const side = (uid, role, score, lead) => '<div class="side' + (lead ? ' lead' : '') + '"><span class="role">' + role + '</span>' + av(uid, 92) +
+    '<span class="nm">' + nm(uid) + '</span><span class="sc"><i class="coin"></i>' + fmt(score) + '</span></div>';
+  setHTML(el, '<div class="bt">⚔️ BATALLA POR ' + flag(b.code, 62) + ' <span class="gold">' + cname(b.code).toUpperCase() + '</span></div>' +
+    '<div class="mid">' + side(b.att, 'ATACA', b.attScore, b.attScore > b.defScore) +
+    '<div class="clock"><div class="t" id="clk">0:00</div><small>el que más done<br>se lo queda</small></div>' +
+    side(b.def, 'DEFIENDE', b.defScore, b.defScore >= b.attScore) + '</div>' +
+    '<div class="tug"><i style="width:' + pa + '%;background:' + color(b.att) + '"></i><i style="width:' + (100 - pa) + '%;background:' + color(b.def) + '"></i></div>' +
+    '<div class="foot">Empate = defiende el dueño · regalo en los últimos 10 s = prórroga</div>');
+  tick();
+}
+function tick() {
+  const el = $('clk'); if (!el || !S || !S.battle) return;
+  const rem = Math.max(0, S.battle.endsAt - (Date.now() + offset)), s = Math.ceil(rem / 1000);
+  el.textContent = rem <= 0 ? '⏳' : Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  el.classList.toggle('low', rem > 0 && s <= 10);
+}
+setInterval(tick, 200);
+
+function render() { renderTop(); renderPending(); renderBar(); renderBattle(); paintMap(); }
+
+/* ---------------- avisos (cola de eventos) ---------------- */
+const evq = []; let busy = false;
+function pump() {
+  if (busy) return;
+  const e = evq.shift(); if (!e) return;
+  let html = '', dur = 0;
+  if (e.kind === 'conquest') {
+    html = flag(e.code, 150) + '<div class="big"><b>' + nm(e.uid) + '</b> conquista <b>' + cname(e.code).toUpperCase() + '</b></div><div class="sub">Valor del país: <i class="coin"></i>' + fmt(e.value) + ' · supéralo para arrebatárselo</div>';
+    dur = 6500; hot = e.code;
+  } else if (e.kind === 'reinforce') {
+    html = flag(e.code, 120) + '<div class="big"><b>' + nm(e.uid) + '</b> refuerza <b>' + cname(e.code).toUpperCase() + '</b></div><div class="sub">Nuevo valor: <i class="coin"></i>' + fmt(e.value) + '</div>';
+    dur = 4500; hot = e.code;
+  } else if (e.kind === 'round_end' && e.top && e.top.length) {
+    html = '<div class="who">' + av(e.top[0].uid, 96) + '<div class="big">🏆 <b>' + nm(e.top[0].uid) + '</b><br>gana la ronda ' + e.n + '</div></div><div class="sub">Escribe en el chat <code>conquisto + país</code></div>';
+    dur = 6000;
+  } else if (e.kind === 'battle_start') {
+    html = flag(e.code, 120) + '<div class="big">⚔️ <b>' + nm(e.att) + '</b> ataca <b>' + cname(e.code).toUpperCase() + '</b></div><div class="sub">' + nm(e.def) + ', ¡defiende tu país!</div>';
+    dur = 3500;
+  } else if (e.kind === 'battle_end') {
+    html = flag(e.code, 130) + (e.flipped
+      ? '<div class="big"><b>' + nm(e.winner) + '</b> arrebata <b>' + cname(e.code).toUpperCase() + '</b> a ' + nm(e.loser) + '</div>'
+      : '<div class="big">🛡️ <b>' + nm(e.winner) + '</b> defiende <b>' + cname(e.code).toUpperCase() + '</b></div>') +
+      '<div class="sub"><i class="coin"></i>' + fmt(e.score) + ' contra ' + fmt(e.other) + ' · nuevo valor ' + fmt(e.score) + '</div>';
+    dur = 7000; if (e.flipped) hot = e.code;
+  }
+  if (!dur) return pump();
+  busy = true;
+  const t = $('toast'); t.innerHTML = html; t.classList.remove('show'); void t.offsetWidth; t.classList.add('show');
+  paintMap();
+  setTimeout(() => { t.classList.remove('show'); busy = false; setTimeout(() => { if (!busy) { hot = null; if (S) paintMap(); } }, 6000); pump(); }, dur);
+}
+
+/* ---------------- conexión ---------------- */
+function onState(p) {
+  S = p.state; D = p.derived; offset = p.now - Date.now();
+  if (lastEv === null) lastEv = S.seq;
+  else { for (const e of S.events) if (e.id > lastEv) evq.push(e); lastEv = Math.max(lastEv, S.seq); }
+  render(); pump();
+}
+function connect() {
+  const es = new EventSource('/events');
+  es.onmessage = m => { try { onState(JSON.parse(m.data)); } catch (e) { console.error(e); } };
+  es.onerror = () => { es.close(); setTimeout(connect, 2000); };
+}
+fetch('/countries.json').then(r => r.json()).then(j => {
+  CONTS = j.conts;
+  for (const c of j.countries) { C[c.code] = c; if (c.num !== '-') byNum[c.num] = c.code; }
+  connect();
+  if (window.d3 && window.topojson) loadMap();
+  else { $('map').style.display = 'none'; $('mapfail').style.display = 'flex'; }
+});
+</script>
+</body>
+</html>
