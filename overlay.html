@@ -251,7 +251,7 @@ function renderBar() {
   const last = Object.entries(S.countries).sort((a, b) => b[1].t - a[1].t).slice(0, 3);
   if (last.length) views.push('<span class="ttl">🚩 ÚLTIMAS</span>' + last.map(([code, c]) =>
     '<span class="it">' + flag(code, 34) + '<span class="n">' + nm(c.owner) + '</span></span>').join(''));
-  views.push('<span class="cta">🌍 Sé el <span class="gold">TOP 1</span> de la ronda y conquista un país. ¡Defiéndelo!</span>');
+  views.push('<span class="cta">🌍 Sé el <span class="gold">TOP 1</span> de la ronda y conquista un país</span>');
   const html = '<span class="fade" style="display:flex;align-items:center;gap:14px;min-width:0">' + views[barView % views.length] + '</span>';
   setHTML($('bar'), html);
 }
