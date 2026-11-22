@@ -342,6 +342,9 @@ DESTRUCTIVE = {'end_round', 'assign', 'cancel_right', 'set_owner', 'free_country
                'battle_resolve', 'battle_cancel', 'reset_round', 'reset_all', 'import'}
 
 
+QUICK = {'end_round', 'undo', 'reset_round', 'battle_time', 'battle_resolve', 'battle_cancel', 'cancel_right'}
+
+
 def api_action(a, d):
     global state, undo_snap, undo_at
     if a in DESTRUCTIVE:
@@ -521,6 +524,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'countries': COUNTRIES, 'conts': CONTS})
         elif path == '/webhook':
             self.do_POST()
+        elif path.startswith('/do/'):
+            self.quick_action(path[4:])
         elif path == '/health':
             self.send_json({'ok': True, 'clients': len(clients)})
         elif path == '/debug':
@@ -531,6 +536,27 @@ class Handler(BaseHTTPRequestHandler):
             self.send_response(404)
             self.end_headers()
             self.wfile.write(b'404')
+
+    def quick_action(self, name):
+        """Acciones del panel por URL (GET), para atajos de teclado y botones de Stream Deck."""
+        q = parse_qs(urlparse(self.path).query)
+        if HOOK_TOKEN and q.get('token', [''])[0] != HOOK_TOKEN:
+            self.send_json({'ok': False, 'error': 'token'}, 403)
+            return
+        if name not in QUICK:
+            self.send_json({'ok': False, 'error': 'Acción desconocida', 'acciones': sorted(QUICK)}, 404)
+            return
+        with lock:
+            data = {}
+            if name == 'battle_time':
+                data['seconds'] = int(q.get('s', ['30'])[0])
+            if name == 'cancel_right':
+                if not state['rights']:
+                    self.send_json({'ok': False, 'error': 'No hay conquistas pendientes'})
+                    return
+                data['id'] = state['rights'][0]['id']
+            err = api_action(name, data)
+        self.send_json({'ok': not err, 'error': err, 'accion': name})
 
     def serve_file(self, rel):
         with open(os.path.join(BASE, rel), 'rb') as f:
