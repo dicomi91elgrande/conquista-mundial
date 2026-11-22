@@ -41,3 +41,19 @@ Los comentarios que no empiezan por `conquist…` se ignoran.
 
 Con la variable de entorno `HOOK_TOKEN`, `/webhook` y `/api` exigen `?token=…`
 (abre el panel como `/panel?token=…`).
+
+## Atajos de teclado y Stream Deck
+
+`atajos.ahk` (AutoHotkey v2) registra atajos globales que llaman a `…/do/<acción>` en el servidor.
+Tiene que estar abierto (doble clic) para que funcionen los atajos y los botones de Stream Deck.
+
+| Atajo (Ctrl+Alt+Shift+…) | Acción | URL |
+|---|---|---|
+| R | Fin de ronda | `/do/end_round` |
+| Z | Deshacer (2 min) | `/do/undo` |
+| V | Vaciar el top sin premiar | `/do/reset_round` |
+| N | Anular la conquista pendiente | `/do/cancel_right` |
+| M | Batalla +30 s | `/do/battle_time?s=30` |
+| B | Resolver batalla ya | `/do/battle_resolve` |
+| X | Cancelar batalla | `/do/battle_cancel` |
+
