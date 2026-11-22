@@ -28,6 +28,30 @@ Do(action, extra := "") {
     return false
 }
 
+; Acciones que solo existen en /api (POST). Devuelve el texto de respuesta del servidor.
+Api(action) {
+    global BASE, TOKEN
+    try {
+        req := ComObject("WinHttp.WinHttpRequest.5.1")
+        req.Open("POST", BASE "/api" (TOKEN != "" ? "?token=" TOKEN : ""), true)
+        req.SetRequestHeader("Content-Type", "application/json")
+        req.Send('{"action":"' action '"}')
+        if !req.WaitForResponse(10)
+            throw Error("timeout")
+        if !InStr(req.ResponseText, '"ok": true')
+            SoundBeep 400, 150
+        return req.ResponseText
+    } catch {
+        SoundBeep 250, 400
+    }
+    return ""
+}
+
+if A_Args.Length >= 2 && A_Args[1] = "testapi" {
+    FileAppend Api(A_Args[2]) "`n", "*"
+    ExitApp
+}
+
 ; modo prueba desde la línea de comandos:  AutoHotkey64.exe atajos.ahk test undo
 if A_Args.Length >= 2 && A_Args[1] = "test" {
     FileAppend (Do(A_Args[2]) ? "ok" : "no") "`n", "*"
@@ -43,3 +67,4 @@ if A_Args.Length >= 2 && A_Args[1] = "test" {
 ^!+b:: Do("battle_resolve")            ; B = resolver la Batalla ya
 ^!+x:: Do("battle_cancel")             ; X = cancelar la batalla
 ^!+i:: Do("toggle_view")               ; I = mostrar / ocultar el top de Imperios en el overlay
+^!+0:: Api("reset_all")                ; 0 = poner TODO a cero: top, conquistas e imperios (Z lo deshace durante 2 min)
