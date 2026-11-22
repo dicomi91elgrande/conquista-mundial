@@ -478,6 +478,7 @@ def parse_body(text, depth=0):
         obj = json.loads(text)
     except ValueError:
         fixed = re.sub(r':\s*\{(\w+)\}', lambda m: ': "{' + m.group(1) + '}"', text)
+        fixed = re.sub(r':\s*(?=[,}])', ': null', fixed)      # placeholder vacío: "coins":}
         obj = json.loads(fixed)
     if isinstance(obj, str) and depth < 2:      # Interactive a veces manda el JSON dentro de una cadena
         return parse_body(obj, depth + 1)

@@ -32,10 +32,10 @@ restaura sola si el servidor arranca vacío (útil en Render, donde el disco no 
 
 | Disparador | POST Body |
 |---|---|
-| Cualquier regalo | `{"event":"gift","username":"{username}","nickname":"{nickname}","imgprofile":"{imgprofile}","coins":{coins}}` |
+| Cualquier regalo | `{"event":"gift","username":"{username}","nickname":"{nickname}","imgprofile":"{imgprofile}","coins":"{coins}"}` |
 | Mensaje de chat | `{"event":"comment","username":"{username}","nickname":"{nickname}","imgprofile":"{imgprofile}","comment":"{comment}"}` |
 
-`{coins}` va sin comillas. Los comentarios que no empiezan por `conquist…` se ignoran.
+Los comentarios que no empiezan por `conquist…` se ignoran.
 
 ## Token opcional
 
