@@ -27,7 +27,7 @@ import re
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, unquote
 from urllib.request import Request, urlopen
 
 from countries import COUNTRIES, BY_CODE, CONTS, find_country, slug
@@ -171,6 +171,8 @@ def touch_user(uid, name=None, img=None):
     if name and '{' not in name:
         u['name'] = name[:40]
     img = str(img or '').strip()
+    if img.lower().startswith(('http%3a', 'https%3a')):
+        img = unquote(img)
     if img.startswith('http') and '{' not in img:
         u['img'] = img
     return u
@@ -470,13 +472,16 @@ recent = []              # últimas peticiones recibidas en /webhook (diagnósti
 bad_bodies = []          # últimos cuerpos que no se pudieron leer (diagnóstico en /debug)
 
 
-def parse_body(text):
-    """JSON normal; si falla, tolera placeholders sin sustituir ni comillas, p. ej. "coins":{coins}."""
+def parse_body(text, depth=0):
+    """JSON normal; tolera placeholders sin comillas ("coins":{coins}) y el cuerpo enviado como cadena JSON."""
     try:
-        return json.loads(text)
+        obj = json.loads(text)
     except ValueError:
         fixed = re.sub(r':\s*\{(\w+)\}', lambda m: ': "{' + m.group(1) + '}"', text)
-        return json.loads(fixed)
+        obj = json.loads(fixed)
+    if isinstance(obj, str) and depth < 2:      # Interactive a veces manda el JSON dentro de una cadena
+        return parse_body(obj, depth + 1)
+    return obj
 
 
 # ---------------------------------------------------------------- HTTP
@@ -623,7 +628,7 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == '/webhook':
             recent.append({'t': ms(), 'method': self.command, 'query': parsed.query[:200],
                            'ctype': self.headers.get('Content-Type'), 'len': len(raw),
-                           'te': self.headers.get('Transfer-Encoding'), 'raw': raw[:300].decode('latin-1')})
+                           'te': self.headers.get('Transfer-Encoding'), 'raw': raw[:700].decode('latin-1')})
             del recent[:-10]
         try:
             try:
