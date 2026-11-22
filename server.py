@@ -466,6 +466,18 @@ def handle_webhook(obj):
     return 'ignorado'
 
 
+bad_bodies = []          # últimos cuerpos que no se pudieron leer (diagnóstico en /debug)
+
+
+def parse_body(text):
+    """JSON normal; si falla, tolera placeholders sin sustituir ni comillas, p. ej. "coins":{coins}."""
+    try:
+        return json.loads(text)
+    except ValueError:
+        fixed = re.sub(r':\s*\{(\w+)\}', lambda m: ': "{' + m.group(1) + '}"', text)
+        return json.loads(fixed)
+
+
 # ---------------------------------------------------------------- HTTP
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
@@ -502,6 +514,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'countries': COUNTRIES, 'conts': CONTS})
         elif path == '/health':
             self.send_json({'ok': True, 'clients': len(clients)})
+        elif path == '/debug':
+            self.send_json({'bad_bodies': bad_bodies, 'v': state['v']})
         elif path == '/avatar':
             self.serve_avatar()
         else:
@@ -592,9 +606,11 @@ class Handler(BaseHTTPRequestHandler):
                 text = raw.decode('utf-8')
             except UnicodeDecodeError:
                 text = raw.decode('latin-1')
-            obj = json.loads(text) if raw else {}
+            obj = parse_body(text) if raw else {}
         except Exception:
             obj = {}
+            bad_bodies.append({'t': ms(), 'path': parsed.path, 'raw': raw[:400].decode('latin-1')})
+            del bad_bodies[:-10]
         if not isinstance(obj, dict):
             obj = {}
         try:
