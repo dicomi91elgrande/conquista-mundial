@@ -466,8 +466,13 @@ def handle_webhook(obj):
             coins = int(float(str(obj.get('coins'))))
         except (TypeError, ValueError):
             coins = 1
+        try:                                   # si el webhook se manda una sola vez por combo, trae {repeatcount}
+            repeat = int(float(str(obj.get('repeat'))))
+        except (TypeError, ValueError):
+            repeat = 1
+        coins *= min(max(repeat, 1), 1000)
         add_gift(uid, name, img, coins)
-        return 'gift:%d' % coins
+        return 'gift:%d (x%d)' % (coins, repeat)
     return 'ignorado'
 
 
