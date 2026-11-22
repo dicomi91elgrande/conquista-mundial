@@ -83,6 +83,27 @@
   .fade { animation: fade .5s; }
   @keyframes fade { from { transform: translateY(14px); } }
 
+  /* ---------- vista de imperios (pantalla completa, se alterna con un atajo) ---------- */
+  #empv { position: absolute; inset: 0; z-index: 5; display: none; flex-direction: column; padding: 8px 14px 12px;
+          background: radial-gradient(120% 140% at 50% 0%, #2a1f6b 0%, #100c2e 55%, #07061a 100%); }
+  #empv .et { height: 46px; line-height: 46px; text-align: center; font-size: 30px; color: #ffd34d; text-shadow: 0 2px 0 #5b3a00; letter-spacing: .5px; }
+  #empv .ecols { flex: 1; display: flex; gap: 12px; min-height: 0; }
+  #empv .ecol { flex: 1; min-width: 0; display: flex; flex-direction: column; border-radius: 16px; padding: 8px 12px;
+                background: rgba(255,255,255,.07); border: 3px solid var(--c, rgba(255,255,255,.15)); }
+  #empv .ecol.none { align-items: center; justify-content: center; opacity: .5; font-size: 24px; border-style: dashed; }
+  #empv .eh { display: flex; align-items: center; gap: 10px; height: 74px; flex: none; }
+  #empv .eh .rk { font-size: 38px; flex: none; }
+  #empv .eh .inf { min-width: 0; display: flex; flex-direction: column; }
+  #empv .eh .nm { font-size: 26px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #empv .eh .ct { font-size: 22px; line-height: 1.15; color: #ffd34d; }
+  #empv .el { flex: 1; min-height: 0; overflow: hidden; display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; align-content: start; }
+  #empv .el.big { grid-template-columns: 1fr; gap: 6px; }
+  #empv .ec { display: flex; align-items: center; gap: 8px; min-width: 0; height: 28px; font-size: 18px; }
+  #empv .el.big .ec { height: 42px; font-size: 26px; gap: 12px; }
+  #empv .el.mid .ec { height: 36px; font-size: 22px; gap: 9px; }
+  #empv .ec span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #empv .ec.more { color: #cfc8ff; }
+
   /* ---------- batalla ---------- */
   #battle { position: absolute; inset: 0; display: none; flex-direction: column; padding: 12px 18px 10px;
             background: radial-gradient(100% 120% at 50% 0%, rgba(120,20,30,.96), rgba(20,6,30,.97)); }
@@ -129,6 +150,7 @@
     <div id="battle"></div>
     <div id="toast"></div>
   </div>
+  <div id="empv"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
@@ -280,7 +302,27 @@ function tick() {
 }
 setInterval(tick, 200);
 
-function render() { renderTop(); renderPending(); renderBar(); renderBattle(); paintMap(); }
+function renderEmpires() {
+  const el = $('empv');
+  if (S.view !== 'empires') { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const medals = ['🥇', '🥈', '🥉'];
+  let cols = '';
+  for (let i = 0; i < 3; i++) {
+    const e = D.empires[i];
+    if (!e) { cols += '<div class="ecol none">' + medals[i] + ' Imperio libre</div>'; continue; }
+    const mine = Object.entries(S.countries).filter(([, c]) => c.owner === e.uid).sort((a, b) => b[1].value - a[1].value);
+    const big = mine.length <= 5, mid = !big && mine.length <= 12, max = big ? 5 : mid ? 12 : 16;
+    const shown = mine.length > max ? mine.slice(0, max - 1) : mine;
+    let list = shown.map(([code]) => '<div class="ec">' + flag(code, big ? 50 : mid ? 42 : 34) + '<span>' + cname(code) + '</span></div>').join('');
+    if (mine.length > shown.length) list += '<div class="ec more"><span>+' + (mine.length - shown.length) + ' más</span></div>';
+    cols += '<div class="ecol" style="--c:' + color(e.uid) + '"><div class="eh"><span class="rk">' + medals[i] + '</span>' + av(e.uid, 60) +
+      '<span class="inf"><span class="nm">' + nm(e.uid) + '</span><span class="ct">' + e.count + (e.count === 1 ? ' país' : ' países') + '</span></span></div>' +
+      '<div class="el' + (big ? ' big' : mid ? ' mid' : '') + '">' + list + '</div></div>';
+  }
+  setHTML(el, '<div class="et">🏰 TOP IMPERIOS · quién tiene más países</div><div class="ecols">' + cols + '</div>');
+}
+function render() { renderTop(); renderPending(); renderBar(); renderBattle(); paintMap(); renderEmpires(); }
 
 /* ---------------- avisos (cola de eventos) ---------------- */
 const evq = []; let busy = false;

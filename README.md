@@ -56,4 +56,5 @@ Tiene que estar abierto (doble clic) para que funcionen los atajos y los botones
 | M | Batalla +30 s | `/do/battle_time?s=30` |
 | B | Resolver batalla ya | `/do/battle_resolve` |
 | X | Cancelar batalla | `/do/battle_cancel` |
+| I | Mostrar / ocultar el top de imperios en el overlay | `/do/toggle_view` |
 

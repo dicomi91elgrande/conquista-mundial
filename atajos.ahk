@@ -42,3 +42,4 @@ if A_Args.Length >= 2 && A_Args[1] = "test" {
 ^!+m:: Do("battle_time", "&s=30")      ; M = Más tiempo de batalla (+30 s)
 ^!+b:: Do("battle_resolve")            ; B = resolver la Batalla ya
 ^!+x:: Do("battle_cancel")             ; X = cancelar la batalla
+^!+i:: Do("toggle_view")               ; I = mostrar / ocultar el top de Imperios en el overlay

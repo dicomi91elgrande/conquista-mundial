@@ -71,6 +71,7 @@ def default_state():
         'queue': [],            # batallas en espera [{code, uid, amount}]
         'events': [],           # últimos eventos (animaciones del overlay + registro del panel)
         'config': {'battleSeconds': 90},
+        'view': 'normal',       # 'normal' o 'empires' (pantalla de top imperios en el overlay)
     }
 
 
@@ -342,7 +343,7 @@ DESTRUCTIVE = {'end_round', 'assign', 'cancel_right', 'set_owner', 'free_country
                'battle_resolve', 'battle_cancel', 'reset_round', 'reset_all', 'import'}
 
 
-QUICK = {'end_round', 'undo', 'reset_round', 'battle_time', 'battle_resolve', 'battle_cancel', 'cancel_right'}
+QUICK = {'toggle_view', 'end_round', 'undo', 'reset_round', 'battle_time', 'battle_resolve', 'battle_cancel', 'cancel_right'}
 
 
 def api_action(a, d):
@@ -364,6 +365,10 @@ def api_action(a, d):
             return 'Comentario: ' + res
     elif a == 'end_round':
         end_round()
+    elif a == 'toggle_view':
+        want = d.get('view')
+        state['view'] = want if want in ('normal', 'empires') else ('normal' if state.get('view') == 'empires' else 'empires')
+        changed()
     elif a == 'reset_round':
         state['round']['totals'] = {}
         changed()
