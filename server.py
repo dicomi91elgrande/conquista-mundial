@@ -466,6 +466,7 @@ def handle_webhook(obj):
     return 'ignorado'
 
 
+recent = []              # últimas peticiones recibidas en /webhook (diagnóstico en /debug)
 bad_bodies = []          # últimos cuerpos que no se pudieron leer (diagnóstico en /debug)
 
 
@@ -512,10 +513,12 @@ class Handler(BaseHTTPRequestHandler):
             self.handle_sse()
         elif path == '/countries.json':
             self.send_json({'countries': COUNTRIES, 'conts': CONTS})
+        elif path == '/webhook':
+            self.do_POST()
         elif path == '/health':
             self.send_json({'ok': True, 'clients': len(clients)})
         elif path == '/debug':
-            self.send_json({'bad_bodies': bad_bodies, 'v': state['v']})
+            self.send_json({'recent': recent, 'bad_bodies': bad_bodies, 'v': state['v']})
         elif path == '/avatar':
             self.serve_avatar()
         else:
@@ -590,6 +593,23 @@ class Handler(BaseHTTPRequestHandler):
                 if q in clients:
                     clients.remove(q)
 
+    def read_body(self):
+        if 'chunked' in (self.headers.get('Transfer-Encoding') or '').lower():
+            data = b''
+            while True:
+                size = int((self.rfile.readline().split(b';')[0].strip() or b'0'), 16)
+                if size == 0:
+                    self.rfile.readline()
+                    break
+                data += self.rfile.read(size)
+                self.rfile.readline()
+            return data
+        length = int(self.headers.get('Content-Length', '0') or 0)
+        return self.rfile.read(length) if length else b''
+
+    def do_PUT(self):
+        self.do_POST()
+
     def do_POST(self):
         parsed = urlparse(self.path)
         if parsed.path not in ('/webhook', '/api'):
@@ -599,8 +619,12 @@ class Handler(BaseHTTPRequestHandler):
         if HOOK_TOKEN and parse_qs(parsed.query).get('token', [''])[0] != HOOK_TOKEN:
             self.send_json({'ok': False, 'error': 'token'}, 403)
             return
-        length = int(self.headers.get('Content-Length', '0') or 0)
-        raw = self.rfile.read(length) if length else b''
+        raw = self.read_body()
+        if parsed.path == '/webhook':
+            recent.append({'t': ms(), 'method': self.command, 'query': parsed.query[:200],
+                           'ctype': self.headers.get('Content-Type'), 'len': len(raw),
+                           'te': self.headers.get('Transfer-Encoding'), 'raw': raw[:300].decode('latin-1')})
+            del recent[:-10]
         try:
             try:
                 text = raw.decode('utf-8')
@@ -613,6 +637,13 @@ class Handler(BaseHTTPRequestHandler):
             del bad_bodies[:-10]
         if not isinstance(obj, dict):
             obj = {}
+        if not obj and parsed.path == '/webhook':
+            form = parse_qs(parsed.query)
+            try:
+                form.update(parse_qs(raw.decode('utf-8', 'replace')))
+            except Exception:
+                pass
+            obj = {k: v[0] for k, v in form.items() if k != 'token'}
         try:
             with lock:
                 if parsed.path == '/webhook':
